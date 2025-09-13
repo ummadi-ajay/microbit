@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Micro:bit Flipbook with Zoom & Instructions</title>
+<style>
+body {
+  background: #e0e0e0;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+#flipbook-container {
+  width: 800px;
+  height: 500px;
+  margin: 20px auto;
+  perspective: 2000px;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.3s ease;
+}
+
+.sheet {
+  width: 800px;
+  height: 500px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-style: preserve-3d;
+  transform-origin: left;
+  transition: transform 1s ease;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.page {
+  width: 400px;
+  height: 500px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  backface-visibility: hidden;
+  transform-origin: left;
+  transform-style: preserve-3d;
+  transition: transform 1s ease;
+}
+
+.page img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+  border-radius: 10px;
+}
+
+.page-title {
+  text-align: center;
+  font-weight: bold;
+  padding: 6px 0;
+  background: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+  font-size: 18px;
+}
+
+#controls {
+  margin: 15px 0;
+}
+
+button {
+  padding: 8px 16px;
+  margin: 0 6px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  background-color: #4CAF50;
+  color: #fff;
+}
+
+button:disabled {
+  background-color: #888;
+  cursor: default;
+}
+
+#instructions {
+  max-width: 800px;
+  margin: 15px auto;
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: left;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  #flipbook-container {
+    width: 95%;
+    height: auto;
+  }
+  .sheet {
+    width: 100%;
+    justify-content: center;
+  }
+  .page.right {
+    display: none;
+  }
+  .page.left {
+    width: 100%;
+    height: auto;
+  }
+  .page {
+    height: auto;
+  }
+}
+</style>
+</head>
+<body>
+
+<h2>📖 Micro:bit Flipbook</h2>
+<div id="flipbook-container"></div>
+
+<div id="controls">
+  <button id="prevBtn">⬅ Previous</button>
+  <button id="nextBtn">Next ➡</button>
+  <button id="zoomInBtn">🔍 Zoom In</button>
+  <button id="zoomOutBtn">🔎 Zoom Out</button>
+  <button id="resetZoomBtn">🔄 Reset</button>
+</div>
+
+<div id="instructions">
+  <h3>📌 How to Use</h3>
+  <ul>
+    <li>Click on the <b>right side</b> of the book → Next page</li>
+    <li>Click on the <b>left side</b> of the book → Previous page</li>
+    <li>Use <b>⬅ / ➡ arrow keys</b> on keyboard to flip pages</li>
+    <li>Swipe left/right on mobile to flip pages</li>
+    <li>Use <b>Zoom In / Zoom Out</b> buttons to adjust size</li>
+    <li>Click <b>Reset</b> to go back to default size</li>
+  </ul>
+</div>
+
+<script>
+const totalPages = 73;
+const folder = "flipbook_pages";
+
+const pageNames = [];
+for(let i=1; i<=totalPages; i++){
+  pageNames.push(`Page ${i}`);
+}
+
+const container = document.getElementById("flipbook-container");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const resetZoomBtn = document.getElementById("resetZoomBtn");
+
+let sheets = [];
+
+// Create sheets
+for(let i = 0; i < totalPages; i += 2){
+  let sheet = document.createElement("div");
+  sheet.className = "sheet";
+  sheet.style.zIndex = totalPages - i;
+
+  let left = document.createElement("div");
+  left.className = "page left";
+  let titleL = document.createElement("div");
+  titleL.className = "page-title";
+  titleL.textContent = pageNames[i] || `Page ${i+1}`;
+  left.appendChild(titleL);
+  let imgL = document.createElement("img");
+  imgL.src = `${folder}/microbit_page-${String(i+1).padStart(4,'0')}.jpg`;
+  left.appendChild(imgL);
+
+  let right = document.createElement("div");
+  right.className = "page right";
+  if(i+1 < totalPages){
+    let titleR = document.createElement("div");
+    titleR.className = "page-title";
+    titleR.textContent = pageNames[i+1] || `Page ${i+2}`;
+    right.appendChild(titleR);
+    let imgR = document.createElement("img");
+    imgR.src = `${folder}/microbit_page-${String(i+2).padStart(4,'0')}.jpg`;
+    right.appendChild(imgR);
+  }
+
+  sheet.appendChild(left);
+  sheet.appendChild(right);
+  container.appendChild(sheet);
+  sheets.push(sheet);
+}
+
+let current = 0;
+let zoomLevel = 1;
+
+// Flip functions
+function flipNext() {
+  if(current < sheets.length){
+    sheets[current].style.transform = "rotateY(-180deg)";
+    current++;
+    updateButtons();
+  }
+}
+
+function flipPrev() {
+  if(current > 0){
+    current--;
+    sheets[current].style.transform = "rotateY(0deg)";
+    updateButtons();
+  }
+}
+
+function updateButtons() {
+  prevBtn.disabled = current === 0;
+  nextBtn.disabled = current === sheets.length;
+}
+
+// Zoom controls
+function zoomIn() {
+  zoomLevel += 0.1;
+  container.style.transform = `scale(${zoomLevel})`;
+}
+function zoomOut() {
+  if(zoomLevel > 0.5){
+    zoomLevel -= 0.1;
+    container.style.transform = `scale(${zoomLevel})`;
+  }
+}
+function resetZoom() {
+  zoomLevel = 1;
+  container.style.transform = "scale(1)";
+}
+
+// Click on container
+container.addEventListener("click", (e) => {
+  const rect = container.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  if(clickX > rect.width/2){
+    flipNext();
+  } else {
+    flipPrev();
+  }
+});
+
+// Buttons
+nextBtn.addEventListener("click", flipNext);
+prevBtn.addEventListener("click", flipPrev);
+zoomInBtn.addEventListener("click", zoomIn);
+zoomOutBtn.addEventListener("click", zoomOut);
+resetZoomBtn.addEventListener("click", resetZoom);
+
+// Keyboard support
+document.addEventListener("keydown", (e) => {
+  if(e.key === "ArrowRight") flipNext();
+  if(e.key === "ArrowLeft") flipPrev();
+  if(e.key === "+") zoomIn();
+  if(e.key === "-") zoomOut();
+  if(e.key === "0") resetZoom();
+});
+
+// Swipe support
+let touchStartX = 0;
+let touchEndX = 0;
+
+container.addEventListener("touchstart", (e) => {
+  touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+container.addEventListener("touchend", (e) => {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+}, false);
+
+function handleSwipe() {
+  const swipeThreshold = 50;
+  if(touchEndX < touchStartX - swipeThreshold){
+    flipNext();
+  }
+  if(touchEndX > touchStartX + swipeThreshold){
+    flipPrev();
+  }
+}
+
+// Initialize
+updateButtons();
+</script>
+
+</body>
+</html>
